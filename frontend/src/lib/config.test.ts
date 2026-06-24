@@ -16,7 +16,6 @@ describe('config', () => {
   it('空文字で上書きを解除できる', () => {
     setGasUrlOverride('https://override.example/exec')
     setGasUrlOverride('')
-    // .env 未設定のテスト環境では空文字（=未設定）に戻る
-    expect(getGasUrl()).toBe('')
+    expect(getGasUrl()).toBe(import.meta.env.VITE_GAS_URL?.trim() ?? '')
   })
 })
