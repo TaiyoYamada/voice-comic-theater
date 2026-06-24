@@ -22,9 +22,10 @@ describe('rankServers', () => {
     expect(list).toHaveLength(0)
   })
 
-  it('満員（assignedCount >= capacity）は除外する', () => {
-    const list = rankServers([makeServer({ serverId: 'a', capacity: 2, assignedCount: 2 })])
-    expect(list).toHaveLength(0)
+  it('満員でも除外しない（ソフト上限）', () => {
+    // capacity を超えていても候補から外さない（割り当て不能を防ぐ）。
+    const list = rankServers([makeServer({ serverId: 'a', capacity: 2, activeCount: 5 })])
+    expect(list).toHaveLength(1)
   })
 
   it('lastSeen が古い（heartbeat 切れ）は除外する', () => {
@@ -33,13 +34,21 @@ describe('rankServers', () => {
     expect(list).toHaveLength(0)
   })
 
-  it('空き枠が多い順に並べる', () => {
+  it('在席数（activeCount）が少ない順に並べる', () => {
     const list = rankServers([
-      makeServer({ serverId: 'few', capacity: 2, assignedCount: 1 }), // 空き1
-      makeServer({ serverId: 'many', capacity: 4, assignedCount: 0 }), // 空き4
-      makeServer({ serverId: 'mid', capacity: 3, assignedCount: 1 }), // 空き2
+      makeServer({ serverId: 'busy', activeCount: 3 }),
+      makeServer({ serverId: 'free', activeCount: 0 }),
+      makeServer({ serverId: 'mid', activeCount: 1 }),
     ])
-    expect(list.map((s) => s.serverId)).toEqual(['many', 'mid', 'few'])
+    expect(list.map((s) => s.serverId)).toEqual(['free', 'mid', 'busy'])
+  })
+
+  it('activeCount が無ければ assignedCount で代替する', () => {
+    const list = rankServers([
+      makeServer({ serverId: 'b', assignedCount: 2 }),
+      makeServer({ serverId: 'a', assignedCount: 0 }),
+    ])
+    expect(list.map((s) => s.serverId)).toEqual(['a', 'b'])
   })
 
   it('lastSeen は epoch 数値文字列でも ISO 文字列でも扱える', () => {

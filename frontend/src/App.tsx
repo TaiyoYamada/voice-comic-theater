@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from './state'
-import { ensureAssignment, assignFreshServer } from './lib/registry'
+import { ensureAssignment, assignFreshServer, sendPresence } from './lib/registry'
 import { ServerBadge } from './components/ServerBadge'
 import { Sidebar } from './components/Sidebar'
 import { Ruby } from './components/Furigana'
@@ -60,6 +60,13 @@ export function App() {
   useEffect(() => {
     void connect()
   }, [connect])
+
+  // 在席ハートビート: 接続中は一定間隔で presence を送る（止めると TTL で負荷から外れる）。
+  useEffect(() => {
+    if (mode !== 'ai' || !assignment) return
+    const id = setInterval(() => void sendPresence(assignment.serverId), 30000)
+    return () => clearInterval(id)
+  }, [mode, assignment])
 
   async function reassign() {
     setConnecting(true)

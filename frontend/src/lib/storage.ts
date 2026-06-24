@@ -4,6 +4,17 @@ import type { Assignment, VoiceMode } from '../types'
 
 const LS_ASSIGNMENT = 'vct.assignment'
 const LS_MODE = 'vct.mode'
+const LS_DEVICE = 'vct.deviceId'
+
+/** この端末を識別するID（在席ハートビート用）。無ければ作って保存。 */
+export function getDeviceId(): string {
+  let id = localStorage.getItem(LS_DEVICE)
+  if (!id) {
+    id = 'd-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+    localStorage.setItem(LS_DEVICE, id)
+  }
+  return id
+}
 
 /** 保存済みの接続先を読み込む（無ければ null）。 */
 export function loadAssignment(): Assignment | null {

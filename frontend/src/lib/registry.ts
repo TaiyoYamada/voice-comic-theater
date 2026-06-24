@@ -2,8 +2,13 @@
 
 import { getGasUrl, getServerFreshSeconds } from './config'
 import { checkHealth } from './api'
-import { loadAssignment, saveAssignment } from './storage'
+import { getDeviceId, loadAssignment, saveAssignment } from './storage'
 import type { Assignment, ServerInfo } from '../types'
+
+/** サーバーのライブ負荷（TTL在席数。無ければ assignedCount で代替）。 */
+function loadOf(s: ServerInfo): number {
+  return s.activeCount ?? s.assignedCount ?? 0
+}
 
 /** lastSeen（ISO文字列 or epoch ms）を epoch ms に正規化する。 */
 function lastSeenMs(lastSeen: string): number {
@@ -26,34 +31,42 @@ export async function fetchServers(): Promise<ServerInfo[]> {
   return servers
 }
 
-/** 割り当て候補になりうるサーバーだけに絞り、空きが多い順に並べる。 */
+/**
+ * 割り当て候補を、生きている（enabled＋heartbeat新しい）サーバーに絞り、
+ * ライブ負荷（在席数）が少ない順に並べる。
+ * capacity はハード上限にしない（満員でも除外せず、最も空いている台を選ぶ）。
+ */
 export function rankServers(servers: ServerInfo[]): ServerInfo[] {
   const freshMs = getServerFreshSeconds() * 1000
   const now = Date.now()
   return servers
     .filter((s) => s.enabled)
-    .filter((s) => s.assignedCount < s.capacity)
     .filter((s) => now - lastSeenMs(s.lastSeen) <= freshMs)
     .sort((a, b) => {
-      // 空き枠が多い順 → 同じなら新しい heartbeat 順。
-      const slotA = a.capacity - a.assignedCount
-      const slotB = b.capacity - b.assignedCount
-      if (slotB !== slotA) return slotB - slotA
+      // 在席数が少ない順 → 同数なら新しい heartbeat 順。
+      const loadA = loadOf(a)
+      const loadB = loadOf(b)
+      if (loadA !== loadB) return loadA - loadB
       return lastSeenMs(b.lastSeen) - lastSeenMs(a.lastSeen)
     })
 }
 
-/** GAS に「割り当てた」と伝えて assignedCount を増やす（失敗しても致命的ではない）。 */
-async function notifyAssign(serverId: string): Promise<void> {
+/**
+ * この端末が「serverId のサーバーを使用中」と GAS に知らせる（在席ハートビート）。
+ * 一定間隔で呼ぶ。送り続けている間だけ負荷にカウントされ、止めれば TTL で自動的に外れる。
+ */
+export async function sendPresence(serverId: string): Promise<void> {
   const gas = getGasUrl()
   if (!gas) return
+  const deviceId = getDeviceId()
   try {
     // ヘッダ・ボディ無しの「単純リクエスト」にしてプリフライトを避ける。
-    await fetch(`${gas}?action=assign&serverId=${encodeURIComponent(serverId)}`, {
-      method: 'POST',
-    })
+    await fetch(
+      `${gas}?action=presence&serverId=${encodeURIComponent(serverId)}&deviceId=${encodeURIComponent(deviceId)}`,
+      { method: 'POST' },
+    )
   } catch {
-    // ネットワーク失敗は無視（割り当て自体はローカルで成立させる）。
+    // ネットワーク失敗は無視（次の間隔で再送される）。
   }
 }
 
@@ -79,7 +92,7 @@ export async function assignFreshServer(excludeId?: string): Promise<Assignment>
     if (await checkHealth(s.apiUrl)) {
       const assignment = toAssignment(s)
       saveAssignment(assignment)
-      void notifyAssign(s.serverId)
+      void sendPresence(s.serverId) // すぐ在席を知らせて負荷に反映（次の端末が別の台を選ぶ）
       return assignment
     }
   }
@@ -99,6 +112,7 @@ export type EnsureResult =
 export async function ensureAssignment(): Promise<EnsureResult> {
   const saved = loadAssignment()
   if (saved && (await checkHealth(saved.apiUrl))) {
+    void sendPresence(saved.serverId) // 復帰時もすぐ在席を知らせる
     return { status: 'ok', assignment: saved }
   }
   try {

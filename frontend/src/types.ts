@@ -22,6 +22,8 @@ export interface ServerInfo {
   enabled: boolean
   capacity: number
   assignedCount: number
+  /** TTL方式のライブ在席数（GAS が presence から算出）。 */
+  activeCount?: number
   /** ISO文字列 または epoch(ms)。GAS の実装に合わせて文字列で扱う。 */
   lastSeen: string
 }
