@@ -1,7 +1,10 @@
-# 声つき4コマ劇場 🎤📖
+# コエコミ — 声でつくる4コマ劇場 🎤📖
+
+> アプリ名: **コエコミ**（声 × コミック）。リポジトリ名は `voice-comic-theater`。
 
 小学生向けイベント用 Web アプリ。
-iPad でアプリを開き、**4コマ漫画を作り → 自分の声を録音 → AI音声を生成 → 4コマ劇場として再生**するまでを、子どもが迷わず進められるステップ形式で実現します。
+iPad でアプリを開き、**4コマ漫画を作り → 自分の声を録音 → AI音声を生成 → 4コマ劇場として再生**するまでを行えます。
+画面は**左サイドバーでいつでも自由に行き来**でき（順番の強制なし）、各コマには**写真1枚＋セリフを複数**置けます（追加・削除・編集・▲▼で並べ替え、コマ自体の並べ替えも可）。UI はすべて**漢字＋ふりがな**で表示します。
 
 ```mermaid
 flowchart TD
@@ -20,9 +23,11 @@ flowchart TD
 voice-comic-theater/
 ├── frontend/        React + TypeScript（Vite）。子ども用UI＋先生用 /admin
 │   ├── src/
-│   │   ├── steps/       ステップUI（えをえらぶ→…→4コマげきじょう）
-│   │   ├── lib/         registry(GAS) / api(FastAPI) / recorder / speech / storage
-│   │   ├── admin/       先生・TA用 管理画面
+│   │   ├── steps/       各画面（編集 / 録音 / 文字 / AI声 / 劇場）。サイドバーで自由移動
+│   │   ├── components/  Sidebar / Furigana(ルビ) / PanelPicker / ServerBadge ほか
+│   │   ├── lib/         registry(GAS) / api(FastAPI) / recorder / speech / storage / comic
+│   │   ├── admin/       先生・TA用 管理画面（/admin）
+│   │   ├── Privacy.tsx  プライバシーポリシー（/privacy）
 │   │   └── ...
 │   ├── public/panels/   20枚のダミーパネル画像 + manifest.json（差し替え可）
 │   └── scripts/         パネル画像ジェネレーター
