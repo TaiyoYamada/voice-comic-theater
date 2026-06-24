@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppStateProvider } from './state'
 import { App } from './App'
 import { AdminPanel } from './admin/AdminPanel'
+import { Privacy } from './Privacy'
 import './styles.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/privacy" element={<Privacy />} />
         </Routes>
       </BrowserRouter>
     </AppStateProvider>

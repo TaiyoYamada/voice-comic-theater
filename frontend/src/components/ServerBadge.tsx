@@ -1,25 +1,55 @@
-import { colorDef, colorRuby } from '../lib/colors'
+import { colorDef } from '../lib/colors'
 import { Ruby } from './Furigana'
 import type { Assignment, VoiceMode } from '../types'
 
-/** 画面上部に「あなたは ○サーバー です」を表示する。 */
-export function ServerBadge({ assignment, mode }: { assignment: Assignment | null; mode: VoiceMode }) {
-  if (!assignment) {
+/**
+ * 画面上部の接続ステータス。
+ * 「あなたは○サーバーです」のような表現はやめ、シンプルな接続状態を表示する。
+ * 接続済みのときだけ、どのColabかを色ドットで示す（色は維持）。
+ */
+export function ServerBadge({
+  assignment,
+  mode,
+  connecting,
+}: {
+  assignment: Assignment | null
+  mode: VoiceMode
+  connecting?: boolean
+}) {
+  if (mode !== 'ai') {
     return (
-      <div className="server-badge" style={{ background: '#e5e7eb', color: '#374151' }}>
-        <span className="dot" style={{ background: '#9ca3af' }} />
+      <div className="status-pill muted">
+        <span className="status-dot" />
+        <span>オフラインモード</span>
+      </div>
+    )
+  }
+  if (assignment) {
+    const c = colorDef(assignment.color)
+    return (
+      <div className="status-pill ok">
+        <span className="status-dot" style={{ background: c.hex }} />
         <span>
-          {mode === 'ai' ? <Ruby text="サーバーを探(さが)しています…" /> : 'オフラインモード'}
+          <Ruby text="サーバーに接続済(せつぞくず)み" />
         </span>
       </div>
     )
   }
-  const c = colorDef(assignment.color)
+  if (connecting) {
+    return (
+      <div className="status-pill">
+        <span className="status-dot pulsing" />
+        <span>
+          <Ruby text="サーバーに接続中(せつぞくちゅう)…" />
+        </span>
+      </div>
+    )
+  }
   return (
-    <div className="server-badge" style={{ background: c.hex, color: c.fg }}>
-      <span className="dot" style={{ background: c.fg }} />
+    <div className="status-pill warn">
+      <span className="status-dot" />
       <span>
-        <Ruby text={`あなたは ${colorRuby(c)}サーバー です`} />
+        <Ruby text="サーバーに接続(せつぞく)されていません" />
       </span>
     </div>
   )

@@ -1,31 +1,39 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { StepHead } from '../components/StepHead'
-import { NavBar } from '../components/NavBar'
 import { Ruby } from '../components/Furigana'
-import { NEXT } from '../ui/labels'
+import { Icon } from '../components/icons'
 import { useApp } from '../state'
+import { flattenLines } from '../lib/comic'
 import { fileUrl, generateComicVoices } from '../lib/api'
-import type { StepProps } from './types'
 
-/** ステップ: AIで声を作る（4コマぶんの音声を生成）。 */
-export function GenerateVoices({ stepNumber, goNext, goBack }: StepProps) {
-  const { assignment, recordingBlob, referenceText, lines, comaVoiceUrls, setComaVoiceUrl } = useApp()
+/** AIで声を作る（全コマの全セリフぶんを生成）。 */
+export function GenerateVoices() {
+  const { assignment, recordingBlob, referenceText, comas, setLineVoice } = useApp()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const allDone = comaVoiceUrls.every((u) => !!u)
+  // テキストのあるセリフだけを対象にする。
+  const targets = useMemo(
+    () => flattenLines(comas).filter((t) => t.line.text.trim()),
+    [comas],
+  )
+  const allDone = targets.length > 0 && targets.every((t) => t.line.voiceUrl)
 
   async function run() {
-    if (!assignment || !recordingBlob) return
+    if (!assignment || !recordingBlob || targets.length === 0) return
     setBusy(true)
     setError(null)
     try {
       const res = await generateComicVoices(assignment.apiUrl, {
         audio: recordingBlob,
         referenceText,
-        lines: [lines[0], lines[1], lines[2], lines[3]],
+        lines: targets.map((t) => t.line.text),
       })
-      res.files.forEach((name, i) => setComaVoiceUrl(i, fileUrl(assignment.apiUrl, name)))
+      // 返ってきたファイル名は targets と同じ順番。idで対応づける。
+      res.files.forEach((name, i) => {
+        const t = targets[i]
+        if (t) setLineVoice(t.line.id, fileUrl(assignment.apiUrl, name))
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -36,11 +44,20 @@ export function GenerateVoices({ stepNumber, goNext, goBack }: StepProps) {
   return (
     <div>
       <StepHead
-        num={stepNumber}
         title="AIで声(こえ)を作(つく)る"
-        hint={<Ruby text="あなたの声(こえ)を使(つか)って、4つのセリフを話(はな)す声(こえ)を作(つく)るよ" />}
+        hint={<Ruby text="あなたの声(こえ)を使(つか)って、書(か)いたセリフを全部(ぜんぶ)その声(こえ)で作(つく)るよ" />}
       />
 
+      {!recordingBlob && (
+        <div className="banner warn">
+          <Ruby text="さきに「録音(ろくおん)」で声(こえ)をろくおんしてね。" />
+        </div>
+      )}
+      {targets.length === 0 && (
+        <div className="banner warn">
+          <Ruby text="「へんしゅう」でセリフを書(か)いてね。" />
+        </div>
+      )}
       {error && (
         <div className="banner err">
           <Ruby text="うまくいかなかったよ：" />
@@ -51,10 +68,13 @@ export function GenerateVoices({ stepNumber, goNext, goBack }: StepProps) {
       )}
 
       <div className="card center">
-        <button className="btn big" onClick={run} disabled={busy || !assignment}>
-          <Ruby
-            text={busy ? '声(こえ)を作(つく)っているよ…' : allDone ? 'もう一度(いちど)作(つく)る' : '🎙️ 声(こえ)を作(つく)る'}
-          />
+        <button
+          className="btn big icon-btn"
+          onClick={run}
+          disabled={busy || !assignment || !recordingBlob || targets.length === 0}
+        >
+          <Icon name="sparkles" size={22} />
+          <Ruby text={busy ? '声(こえ)を作(つく)っているよ…' : allDone ? 'もう一度(いちど)作(つく)る' : '声(こえ)を作(つく)る'} />
         </button>
         {busy && (
           <>
@@ -66,24 +86,28 @@ export function GenerateVoices({ stepNumber, goNext, goBack }: StepProps) {
         )}
       </div>
 
-      {allDone && (
+      {targets.some((t) => t.line.voiceUrl) && (
         <div className="card">
-          <div className="banner ok">
-            <Ruby text="できたよ！1つずつ聞(き)いてみよう。" />
-          </div>
-          {comaVoiceUrls.map((u, i) => (
-            <div key={i} style={{ marginBottom: 12 }}>
-              <div className="coma-no">
-                <Ruby text={`${i + 1}コマ目(め)：`} />
-                {lines[i] || '（なし）'}
-              </div>
-              {u && <audio src={u} controls style={{ width: '100%' }} />}
+          {allDone && (
+            <div className="banner ok">
+              <Ruby text="できたよ！1つずつ聞(き)いてみよう。" />
             </div>
-          ))}
+          )}
+          {comas.map((coma, ci) =>
+            coma.lines
+              .filter((l) => l.text.trim())
+              .map((l) => (
+                <div key={l.id} style={{ marginBottom: 12 }}>
+                  <div className="coma-no">
+                    <Ruby text={`${ci + 1}まい目(め)：`} />
+                    {l.text}
+                  </div>
+                  {l.voiceUrl && <audio src={l.voiceUrl} controls style={{ width: '100%' }} />}
+                </div>
+              )),
+          )}
         </div>
       )}
-
-      <NavBar onBack={goBack} onNext={goNext} nextDisabled={!allDone} nextLabel={NEXT.toTheater} />
     </div>
   )
 }

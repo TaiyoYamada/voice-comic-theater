@@ -1,27 +1,38 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StepHead } from '../components/StepHead'
-import { NavBar } from '../components/NavBar'
 import { Ruby } from '../components/Furigana'
-import { NEXT } from '../ui/labels'
+import { Icon } from '../components/icons'
 import { useApp } from '../state'
 import { isRecordingSupported, startRecording, type ActiveRecorder } from '../lib/recorder'
-import type { StepProps } from './types'
 
-/** ステップ: 声をろくおんする（AIの声のもとになる参照音声）。 */
-export function Record({ stepNumber, goNext, goBack }: StepProps) {
-  const { recordingBlob, recordingUrl, setRecording } = useApp()
+function fmt(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+}
+
+/** 声をろくおんする（AIの声のもとになる参照音声。1回だけ）。 */
+export function Record() {
+  const { recordingUrl, setRecording } = useApp()
   const [recording, setRecordingState] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [elapsed, setElapsed] = useState(0)
+  const [error, setError] = useState(false)
   const activeRef = useRef<ActiveRecorder | null>(null)
   const supported = isRecordingSupported()
 
+  // 録音中は経過秒数をカウントアップ（録音中だと一目でわかるように）。
+  useEffect(() => {
+    if (!recording) return
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [recording])
+
   async function onStart() {
-    setError(null)
+    setError(false)
     try {
       activeRef.current = await startRecording()
+      setElapsed(0)
       setRecordingState(true)
     } catch (e) {
-      setError('マイクを つかえませんでした。せっていを かくにんしてね。')
+      setError(true)
       console.error(e)
     }
   }
@@ -42,7 +53,6 @@ export function Record({ stepNumber, goNext, goBack }: StepProps) {
   return (
     <div>
       <StepHead
-        num={stepNumber}
         title="声(こえ)を録音(ろくおん)する"
         hint={<Ruby text="「こんにちは、私(わたし)の名前(なまえ)は○○です」のように話(はな)してみてね" />}
       />
@@ -59,20 +69,29 @@ export function Record({ stepNumber, goNext, goBack }: StepProps) {
       )}
 
       <div className="card center">
+        {recording && (
+          <div className="rec-indicator" role="status">
+            <span className="rec-dot" />
+            <Ruby text="録音中(ろくおんちゅう)" />
+            <span className="rec-time">{fmt(elapsed)}</span>
+          </div>
+        )}
         {!recording ? (
-          <button className="btn rec big" onClick={onStart} disabled={!supported}>
-            <Ruby text="● 録音(ろくおん)スタート" />
+          <button className="btn rec big icon-btn" onClick={onStart} disabled={!supported}>
+            <Icon name="mic" size={26} />
+            <Ruby text="録音(ろくおん)スタート" />
           </button>
         ) : (
-          <button className="btn stop big" onClick={onStop}>
-            <Ruby text="■ 録音(ろくおん)ストップ" />
+          <button className="btn stop big icon-btn" onClick={onStop}>
+            <Icon name="stop" size={24} />
+            <Ruby text="ここをおして 終(お)わる" />
           </button>
         )}
 
         {recordingUrl && !recording && (
           <div style={{ marginTop: 18 }}>
             <p className="step-hint">
-              <Ruby text="聞(き)いてみよう👇" />
+              <Ruby text="聞(き)いてみよう" />
             </p>
             <audio src={recordingUrl} controls style={{ width: '100%' }} />
           </div>
@@ -85,8 +104,6 @@ export function Record({ stepNumber, goNext, goBack }: StepProps) {
         </p>
         <input type="file" accept="audio/*" onChange={onUpload} />
       </div>
-
-      <NavBar onBack={goBack} onNext={goNext} nextDisabled={!recordingBlob} nextLabel={NEXT.toTranscribe} />
     </div>
   )
 }

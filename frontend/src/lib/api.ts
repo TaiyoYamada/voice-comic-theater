@@ -46,24 +46,22 @@ export async function transcribe(apiUrl: string, audio: Blob): Promise<Transcrib
 }
 
 /**
- * 4コマぶんの AI 音声を生成する。
- * 録音音声（参照）・参照テキスト・4つのセリフを送る。
+ * セリフぶんの AI 音声を生成する。
+ * 録音音声（参照）・参照テキスト・任意個数のセリフを送り、同じ順番で音声ファイル名が返る。
  */
 export async function generateComicVoices(
   apiUrl: string,
   params: {
     audio: Blob
     referenceText: string
-    lines: [string, string, string, string]
+    lines: string[]
   },
 ): Promise<GenerateVoicesResponse> {
   const fd = new FormData()
   fd.append('audio', params.audio, 'reference.webm')
   fd.append('reference_text', params.referenceText)
-  fd.append('line1', params.lines[0])
-  fd.append('line2', params.lines[1])
-  fd.append('line3', params.lines[2])
-  fd.append('line4', params.lines[3])
+  // 可変個数のセリフを同じキー 'lines' で送る（順番は保持される）。
+  for (const line of params.lines) fd.append('lines', line)
   const res = await fetch(`${base(apiUrl)}/generate-comic-voices`, {
     method: 'POST',
     headers: commonHeaders,

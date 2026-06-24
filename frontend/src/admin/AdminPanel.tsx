@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../state'
 import { colorDef } from '../lib/colors'
 import { checkHealth } from '../lib/api'
 import { assignFreshServer } from '../lib/registry'
 import { clearAssignment, loadAssignment } from '../lib/storage'
-import { getGasUrl, setGasUrlOverride } from '../lib/config'
 import type { VoiceMode } from '../types'
 
 const MODE_LABELS: Record<VoiceMode, string> = {
@@ -20,12 +19,7 @@ export function AdminPanel() {
   const { assignment, setAssignment, mode, setMode } = useApp()
   const [health, setHealth] = useState<string>('—')
   const [busy, setBusy] = useState(false)
-  const [gas, setGas] = useState(getGasUrl())
   const saved = loadAssignment()
-
-  useEffect(() => {
-    setGas(getGasUrl())
-  }, [])
 
   async function doHealth() {
     if (!assignment) return
@@ -51,11 +45,6 @@ export function AdminPanel() {
     clearAssignment()
     setAssignment(null)
     setHealth('—')
-  }
-
-  function saveGas() {
-    setGasUrlOverride(gas)
-    alert('GAS URL を保存しました（この端末のみ）')
   }
 
   const c = assignment ? colorDef(assignment.color) : null
@@ -124,24 +113,6 @@ export function AdminPanel() {
               <span>{MODE_LABELS[m]}</span>
             </label>
           ))}
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>GAS の URL（この端末のみ上書き）</h3>
-        <p className="step-hint" style={{ marginTop: 0 }}>
-          ふだんは .env の VITE_GAS_URL を使います。緊急時にここで差し替えできます。
-        </p>
-        <input
-          type="text"
-          value={gas}
-          onChange={(e) => setGas(e.target.value)}
-          placeholder="https://script.google.com/macros/s/XXXX/exec"
-        />
-        <div className="row">
-          <button className="btn" onClick={saveGas}>
-            保存
-          </button>
         </div>
       </div>
     </div>

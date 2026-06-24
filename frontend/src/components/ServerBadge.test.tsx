@@ -11,23 +11,31 @@ const assignment: Assignment = {
   assignedAt: 0,
 }
 
-describe('ServerBadge', () => {
-  // ふりがな（<ruby>）でテキストが分割されるため textContent で確認する。
-  it('接続済みなら「あなたは ○サーバー です」を表示（漢字＋ふりがな）', () => {
+describe('ServerBadge（接続ステータス）', () => {
+  it('接続済みなら「接続済み」を表示（色ドットつき）', () => {
     const { container } = render(<ServerBadge assignment={assignment} mode="ai" />)
     const text = container.textContent ?? ''
-    expect(text).toContain('あなたは')
-    expect(text).toContain('青') // 漢字
-    expect(text).toContain('あお') // ふりがな
-    expect(text).toContain('サーバー')
+    expect(text).toContain('接続')
+    expect(text).toContain('済')
+    expect(container.querySelector('.status-dot')).not.toBeNull()
   })
 
-  it('未接続 + AIモードはさがし中を表示', () => {
-    const { container } = render(<ServerBadge assignment={null} mode="ai" />)
-    expect(container.textContent ?? '').toContain('探')
+  it('未接続なら「接続されていません」を表示', () => {
+    // ふりがな（ruby）で漢字の間に読みが入るため、断片ごとに確認する。
+    const { container } = render(<ServerBadge assignment={null} mode="ai" connecting={false} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('接続')
+    expect(text).toContain('されていません')
   })
 
-  it('未接続 + フォールバックはオフライン表示', () => {
+  it('接続中は「接続中」を表示', () => {
+    const { container } = render(<ServerBadge assignment={null} mode="ai" connecting />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('接続')
+    expect(text).toContain('中')
+  })
+
+  it('フォールバックはオフライン表示', () => {
     const { container } = render(<ServerBadge assignment={null} mode="browser-tts" />)
     expect(container.textContent ?? '').toContain('オフラインモード')
   })

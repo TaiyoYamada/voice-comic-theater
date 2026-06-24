@@ -49,13 +49,24 @@ export interface Panel {
   label: string
 }
 
-/** 1コマ分のデータ。 */
-export interface ComaData {
-  panelId: string | null
-  line: string
+/** セリフ1つ（吹き出し）。 */
+export interface Line {
+  id: string
+  text: string
   /** AIモード: 生成音声の URL。 self-record モード: 自分の録音の object URL。 */
   voiceUrl: string | null
 }
+
+/** 1コマ分のデータ（写真1枚＋セリフ複数）。 */
+export interface Coma {
+  panelId: string | null
+  lines: Line[]
+}
+
+/** 1コマあたりのセリフ上限。 */
+export const MAX_LINES_PER_COMA = 4
+/** コマ数（固定）。 */
+export const COMA_COUNT = 4
 
 /** /transcribe のレスポンス。 */
 export interface TranscribeResponse {
