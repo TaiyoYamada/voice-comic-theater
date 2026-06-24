@@ -27,21 +27,19 @@ def test_transcribe_returns_text(client, fake_audio):
     assert len(text) > 0
 
 
-def test_generate_comic_voices_makes_four_files(client, fake_audio):
+def test_generate_comic_voices_makes_one_file_per_line(client, fake_audio):
+    # 可変個数のセリフ（同じキー 'lines' で複数送る）。
     res = client.post(
         "/generate-comic-voices",
         files={"audio": ("ref.webm", fake_audio, "audio/webm")},
         data={
             "reference_text": "こんにちは",
-            "line1": "やあ",
-            "line2": "げんき？",
-            "line3": "うん",
-            "line4": "またね",
+            "lines": ["やあ", "げんき？", "うん", "またね", "ばいばい"],
         },
     )
     assert res.status_code == 200
     files = res.json()["files"]
-    assert len(files) == 4
+    assert len(files) == 5  # セリフの個数ぶん返る
     # 生成された各ファイルが /files から取得でき、wav として再生可能なこと。
     for name in files:
         assert name.endswith(".wav")
@@ -65,7 +63,7 @@ def test_cleanup_removes_files(client, fake_audio):
     client.post(
         "/generate-comic-voices",
         files={"audio": ("ref.webm", fake_audio, "audio/webm")},
-        data={"reference_text": "x", "line1": "a", "line2": "b", "line3": "c", "line4": "d"},
+        data={"reference_text": "x", "lines": ["a", "b", "c", "d"]},
     )
     res = client.post("/cleanup")
     assert res.status_code == 200
@@ -80,7 +78,7 @@ def test_generation_lock_released_after_request(client, fake_audio):
     client.post(
         "/generate-comic-voices",
         files={"audio": ("ref.webm", fake_audio, "audio/webm")},
-        data={"reference_text": "x", "line1": "a", "line2": "b", "line3": "c", "line4": "d"},
+        data={"reference_text": "x", "lines": ["a", "b", "c", "d"]},
     )
     # 処理後はロックが解放されている（1件ずつ処理の後始末）。
     assert generation_lock.locked() is False

@@ -1,9 +1,11 @@
-"""POST /generate-comic-voices — 4コマ分のAI音声を生成する。
+"""POST /generate-comic-voices — セリフぶんのAI音声を生成する。
 
 受け取るもの:
 - audio          : 録音音声（声の参照）
 - reference_text : 参照テキスト（録音内容の文字起こし）
-- line1..line4   : 各コマのセリフ
+- lines          : セリフ（可変個数。同じキーで複数送る）
+
+返すもの: lines と同じ順番の音声ファイル名リスト。
 
 generation_lock を取得してから処理するので、
 1つのColabでは音声生成が同時に複数走らない（1件ずつ順番に処理）。
@@ -28,16 +30,12 @@ router = APIRouter()
 async def generate_comic_voices(
     audio: UploadFile = File(...),
     reference_text: str = Form(""),
-    line1: str = Form(""),
-    line2: str = Form(""),
-    line3: str = Form(""),
-    line4: str = Form(""),
+    lines: list[str] = Form(default=[]),
 ) -> dict:
     data = await audio.read()
     suffix = Path(audio.filename or "ref").suffix or ".webm"
     src = save_upload(data, suffix=suffix)
     ref_wav = convert_to_wav(src)
-    lines = [line1, line2, line3, line4]
 
     # 1つのColabにつき生成は1件ずつ。混雑時は順番待ちになる。
     async with generation_lock:
@@ -45,7 +43,7 @@ async def generate_comic_voices(
         files = await synthesize_lines(
             reference_audio=ref_wav,
             reference_text=reference_text,
-            lines=lines,
+            lines=list(lines),
         )
         log.info("音声生成が完了: %s", files)
 

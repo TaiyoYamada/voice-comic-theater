@@ -18,13 +18,25 @@ log = logging.getLogger("vct")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     settings.ensure_dirs()
+    # 起動時にバックエンドを解決しておく（フォールバック有無を起動ログに出す）。
+    from .services.transcription import get_transcriber
+    from .services.tts import get_tts
+
+    stt = get_transcriber().name
+    tts = get_tts().name
     log.info(
-        "起動: server=%s color=%s transcribe=%s tts=%s",
+        "起動: server=%s color=%s transcribe=%s(→%s) tts=%s(→%s)",
         settings.server_id,
         settings.server_color,
         settings.transcribe_backend,
+        stt,
         settings.tts_backend,
+        tts,
     )
+    if tts == "dummy" and settings.tts_backend != "dummy":
+        log.warning("⚠️ TTS が dummy で動作中（Qwen3-TTS が読み込めていません）")
+    if stt == "dummy" and settings.transcribe_backend != "dummy":
+        log.warning("⚠️ 文字起こしが dummy で動作中（Whisper が読み込めていません）")
     yield
 
 

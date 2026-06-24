@@ -12,11 +12,17 @@ from ..config import settings
 log = logging.getLogger("vct.transcription")
 
 _transcriber: Transcriber | None = None
+_fallback_reason: str | None = None
+
+
+def transcribe_fallback_reason() -> str | None:
+    """whisper 指定なのに dummy になった理由（無ければ None）。/health で確認用。"""
+    return _fallback_reason
 
 
 def get_transcriber() -> Transcriber:
     """設定 TRANSCRIBE_BACKEND に応じた Transcriber を返す（生成は1回だけ）。"""
-    global _transcriber
+    global _transcriber, _fallback_reason
     if _transcriber is not None:
         return _transcriber
 
@@ -30,7 +36,8 @@ def get_transcriber() -> Transcriber:
 
             _transcriber = WhisperTranscriber()
         except Exception as e:
-            log.warning("Whisper を初期化できないため dummy にフォールバックします: %s", e)
+            _fallback_reason = f"{type(e).__name__}: {e}"
+            log.warning("Whisper を初期化できないため dummy にフォールバックします: %s", _fallback_reason)
             _transcriber = DummyTranscriber()
     else:
         if backend != "dummy":

@@ -13,11 +13,17 @@ from ..config import settings
 log = logging.getLogger("vct.tts")
 
 _adapter: TTSAdapter | None = None
+_fallback_reason: str | None = None
+
+
+def tts_fallback_reason() -> str | None:
+    """qwen 指定なのに dummy になった理由（無ければ None）。/health で確認用。"""
+    return _fallback_reason
 
 
 def get_tts() -> TTSAdapter:
     """設定 TTS_BACKEND に応じた TTSAdapter を返す（生成は1回だけ）。"""
-    global _adapter
+    global _adapter, _fallback_reason
     if _adapter is not None:
         return _adapter
 
@@ -32,7 +38,8 @@ def get_tts() -> TTSAdapter:
 
             _adapter = QwenTTS()
         except Exception as e:
-            log.warning("Qwen3-TTS を初期化できないため dummy にフォールバックします: %s", e)
+            _fallback_reason = f"{type(e).__name__}: {e}"
+            log.warning("Qwen3-TTS を初期化できないため dummy にフォールバックします: %s", _fallback_reason)
             _adapter = DummyTTS()
     else:
         if backend != "dummy":
