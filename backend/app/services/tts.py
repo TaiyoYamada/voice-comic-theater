@@ -23,9 +23,17 @@ def get_tts() -> TTSAdapter:
 
     backend = settings.tts_backend.lower()
     if backend == "qwen":
-        from ..adapters.qwen_tts import QwenTTS
+        # 依存（torch / qwen-tts）や GPU が無ければ dummy にフォールバックして落とさない。
+        try:
+            import torch  # noqa: F401
+            from qwen_tts import Qwen3TTSModel  # noqa: F401
 
-        _adapter = QwenTTS()
+            from ..adapters.qwen_tts import QwenTTS
+
+            _adapter = QwenTTS()
+        except Exception as e:
+            log.warning("Qwen3-TTS を初期化できないため dummy にフォールバックします: %s", e)
+            _adapter = DummyTTS()
     else:
         if backend != "dummy":
             log.warning("不明な TTS_BACKEND=%s。dummy を使います。", backend)

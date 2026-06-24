@@ -1,14 +1,18 @@
-"""QwenTTS による音声生成（本実装の差し替え先）。
+"""Qwen3-TTS による音声生成（声クローン）。
 
-.env で TTS_BACKEND=qwen にすると使われる。
-ここに QwenTTS（または互換の声クローン TTS）の実体を実装する。
+Qwen3-TTS は Apache-2.0 のオープンモデルで、参照音声3秒程度から声を真似て
+（zero-shot voice clone）任意のテキストを読み上げられる。Colab の GPU 上で動かす。
 
-ポイント:
-- reference_audio / reference_text を使って声を真似る（voice cloning）。
-- text をその声で読み上げ、out_path に wav として書き出す。
-- モデルのロードは __init__ ではなく初回利用時に1回だけ行う。
-- 重い処理は asyncio.to_thread でスレッドに逃がす
-  （generation_lock により同時実行は1件に制限済み）。
+  pip install -U qwen-tts            （backend/requirements-ai.txt）
+  モデル: Qwen/Qwen3-TTS-12Hz-1.7B-Base（声クローン対応）
+
+参照: https://github.com/QwenLM/Qwen3-TTS
+      https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base
+
+注意:
+- モデルのロードは重いので初回利用時に1回だけ行い、使い回す。
+- 重い処理は asyncio.to_thread に逃がす（generation_lock で同時実行は1件に制限済み）。
+- GPU/依存が無い環境では service 層（services/tts.py）が dummy にフォールバックする。
 """
 
 from __future__ import annotations
@@ -17,7 +21,11 @@ import asyncio
 import logging
 from pathlib import Path
 
+from ..config import settings
+
 log = logging.getLogger("vct.qwen")
+
+_SILENCE_SR = 24000
 
 
 class QwenTTS:
@@ -29,14 +37,29 @@ class QwenTTS:
     def _load(self):
         if self._model is not None:
             return self._model
-        # TODO: QwenTTS のロード処理に差し替える。
-        # 例:
-        #   from transformers import AutoModel, AutoProcessor
-        #   self._processor = AutoProcessor.from_pretrained("Qwen/Qwen-TTS-...")
-        #   self._model = AutoModel.from_pretrained("Qwen/Qwen-TTS-...").to("cuda")
-        raise NotImplementedError(
-            "QwenTTS は未実装です。adapters/qwen_tts.py にモデルのロードと推論を実装してください。"
+        import torch
+        from qwen_tts import Qwen3TTSModel
+
+        cuda = torch.cuda.is_available()
+        kwargs: dict = {"device_map": "cuda:0" if cuda else "cpu"}
+        if cuda:
+            kwargs["dtype"] = torch.bfloat16
+        # flash-attn があれば使う。無ければ sdpa（標準）にフォールバック（ビルド不要）。
+        try:
+            import flash_attn  # noqa: F401
+
+            kwargs["attn_implementation"] = "flash_attention_2"
+        except Exception:
+            kwargs["attn_implementation"] = "sdpa"
+
+        log.info(
+            "Qwen3-TTS をロード中: %s (cuda=%s, attn=%s)",
+            settings.qwen_model,
+            cuda,
+            kwargs["attn_implementation"],
         )
+        self._model = Qwen3TTSModel.from_pretrained(settings.qwen_model, **kwargs)
+        return self._model
 
     async def synthesize(
         self,
@@ -47,12 +70,25 @@ class QwenTTS:
         out_path: Path,
     ) -> Path:
         def _run() -> Path:
-            self._load()
-            # TODO: 実際の推論。reference_audio/reference_text で声を真似て text を合成。
-            #   wav = self._model.generate(text=text, ref_audio=..., ref_text=reference_text)
-            #   import soundfile as sf
-            #   sf.write(str(out_path.with_suffix(".wav")), wav, samplerate)
-            raise NotImplementedError
-            # return out_path.with_suffix(".wav")
+            import soundfile as sf
+
+            wav_path = out_path.with_suffix(".wav")
+
+            # セリフが空のコマは無音にする（モデルに空文字を渡さない）。
+            if not text.strip():
+                import numpy as np
+
+                sf.write(str(wav_path), np.zeros(int(_SILENCE_SR * 0.4), dtype="float32"), _SILENCE_SR)
+                return wav_path
+
+            model = self._load()
+            wavs, sr = model.generate_voice_clone(
+                text=text,
+                language=settings.tts_language,
+                ref_audio=str(reference_audio),
+                ref_text=reference_text,
+            )
+            sf.write(str(wav_path), wavs[0], sr)
+            return wav_path
 
         return await asyncio.to_thread(_run)

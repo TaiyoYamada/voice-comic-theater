@@ -22,9 +22,16 @@ def get_transcriber() -> Transcriber:
 
     backend = settings.transcribe_backend.lower()
     if backend == "whisper":
-        from ..adapters.whisper_transcriber import WhisperTranscriber
+        # whisper が無ければ dummy にフォールバックして落とさない。
+        try:
+            import whisper  # noqa: F401
 
-        _transcriber = WhisperTranscriber()
+            from ..adapters.whisper_transcriber import WhisperTranscriber
+
+            _transcriber = WhisperTranscriber()
+        except Exception as e:
+            log.warning("Whisper を初期化できないため dummy にフォールバックします: %s", e)
+            _transcriber = DummyTranscriber()
     else:
         if backend != "dummy":
             log.warning("不明な TRANSCRIBE_BACKEND=%s。dummy を使います。", backend)

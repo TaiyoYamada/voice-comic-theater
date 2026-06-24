@@ -15,9 +15,14 @@ def _bool(val: str | None, default: bool = False) -> bool:
 
 @dataclass
 class Settings:
-    transcribe_backend: str = field(default_factory=lambda: os.getenv("TRANSCRIBE_BACKEND", "dummy"))
+    # 既定は本番バックエンド。依存やGPUが無い環境では自動で dummy にフォールバックする。
+    transcribe_backend: str = field(default_factory=lambda: os.getenv("TRANSCRIBE_BACKEND", "whisper"))
     whisper_model: str = field(default_factory=lambda: os.getenv("WHISPER_MODEL", "base"))
-    tts_backend: str = field(default_factory=lambda: os.getenv("TTS_BACKEND", "dummy"))
+    tts_backend: str = field(default_factory=lambda: os.getenv("TTS_BACKEND", "qwen"))
+    # Qwen3-TTS（声クローン対応のオープンモデル）
+    qwen_model: str = field(default_factory=lambda: os.getenv("QWEN_TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base"))
+    # 生成する言語（小学生＝日本語想定）
+    tts_language: str = field(default_factory=lambda: os.getenv("TTS_LANGUAGE", "Japanese"))
 
     output_dir: Path = field(default_factory=lambda: Path(os.getenv("OUTPUT_DIR", "output")))
     tmp_dir: Path = field(default_factory=lambda: Path(os.getenv("TMP_DIR", "tmp")))

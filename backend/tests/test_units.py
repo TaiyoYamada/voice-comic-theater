@@ -61,6 +61,8 @@ def test_dummy_tts_varies_length_with_text(tmp_path: Path):
     assert long > short
 
 
-def test_service_selects_dummy_by_default():
+def test_service_falls_back_to_dummy_without_ai_deps():
+    # 既定は whisper / qwen だが、torch・qwen-tts・whisper が無い環境
+    # （CI やローカル開発）では dummy にフォールバックして落ちないこと。
     assert get_transcriber().name == "dummy"
     assert get_tts().name == "dummy"

@@ -10,8 +10,9 @@ def test_health(client):
     assert res.status_code == 200
     body = res.json()
     assert body["status"] == "ok"
-    assert body["transcribeBackend"] == "dummy"
-    assert body["ttsBackend"] == "dummy"
+    # /health は「設定された」バックエンド名を返す（実効値ではなく構成値）。
+    assert body["transcribeBackend"] == settings.transcribe_backend
+    assert body["ttsBackend"] == settings.tts_backend
     assert body["busy"] is False
 
 
