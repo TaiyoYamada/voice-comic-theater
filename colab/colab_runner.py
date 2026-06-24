@@ -21,14 +21,20 @@ Colab のノートブック最後のセルで実行する想定:
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
 
 import requests
 
 # ---- 設定（すべて環境変数から）-------------------------------------------
+# 公開トンネルの種類: "ngrok"（既定） / "cloudflare"
+#   - ngrok      : 1アカウント1トンネル。手元での確認向き（NGROK_AUTHTOKEN が必要）
+#   - cloudflare : Quick Tunnel。無料で複数同時OK・警告ページ無し。本番(5〜10台)向き（鍵不要）
+TUNNEL = os.environ.get("TUNNEL", "ngrok").lower()
 NGROK_AUTHTOKEN = os.environ.get("NGROK_AUTHTOKEN", "")
 GAS_URL = os.environ.get("GAS_URL", "")
 SERVER_ID = os.environ.get("SERVER_ID", "colab-1")
@@ -86,6 +92,68 @@ def open_ngrok() -> str:
     return url
 
 
+# cloudflared プロセスはトンネルの本体。GC されないよう参照を保持しておく。
+_cloudflared_proc: subprocess.Popen | None = None
+
+
+def _download_cloudflared() -> str:
+    """cloudflared バイナリ（linux amd64）を取得して実行パスを返す。"""
+    path = os.path.abspath("cloudflared")
+    if not os.path.exists(path):
+        url = (
+            "https://github.com/cloudflare/cloudflared/releases/latest/download/"
+            "cloudflared-linux-amd64"
+        )
+        urllib.request.urlretrieve(url, path)  # noqa: S310 (github 公式リリース)
+        os.chmod(path, 0o755)
+    return path
+
+
+def open_cloudflare() -> str:
+    """Cloudflare Quick Tunnel を張り、発行された https URL を返す（鍵・アカウント不要）。"""
+    global _cloudflared_proc
+    print("[3/5] Cloudflare Quick Tunnel で外部公開中…")
+    bin_path = _download_cloudflared()
+    _cloudflared_proc = subprocess.Popen(
+        [bin_path, "tunnel", "--no-autoupdate", "--url", f"http://localhost:{PORT}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    pattern = re.compile(r"https://[-a-z0-9]+\.trycloudflare\.com")
+    deadline = time.time() + 40
+    assert _cloudflared_proc.stdout is not None
+    while time.time() < deadline:
+        line = _cloudflared_proc.stdout.readline()
+        if not line:
+            if _cloudflared_proc.poll() is not None:
+                raise RuntimeError("cloudflared が予期せず終了しました")
+            continue
+        m = pattern.search(line)
+        if m:
+            url = m.group(0)
+            print(f"   公開URL: {url}")
+            # 残りの出力を読み捨てる（パイプ詰まりでトンネルが固まるのを防ぐ）。
+            threading.Thread(target=_drain, args=(_cloudflared_proc,), daemon=True).start()
+            return url
+    raise RuntimeError("Cloudflare の公開URLを取得できませんでした")
+
+
+def _drain(proc: subprocess.Popen) -> None:
+    if proc.stdout is None:
+        return
+    for _ in proc.stdout:
+        pass
+
+
+def open_tunnel() -> str:
+    """TUNNEL 環境変数に応じて公開トンネルを選ぶ。"""
+    if TUNNEL == "cloudflare":
+        return open_cloudflare()
+    return open_ngrok()
+
+
 def register_to_gas(api_url: str) -> None:
     print("[4/5] GAS にサーバーを登録中…")
     if not GAS_URL:
@@ -129,10 +197,10 @@ def heartbeat_loop(api_url: str) -> None:
 def main() -> None:
     install_dependencies()
     start_backend()
-    api_url = open_ngrok()
+    api_url = open_tunnel()
     register_to_gas(api_url)
     print("\n✅ 準備完了。このセルは動かしたままにしてください。")
-    print(f"   serverId={SERVER_ID} color={SERVER_COLOR} url={api_url}\n")
+    print(f"   tunnel={TUNNEL} serverId={SERVER_ID} color={SERVER_COLOR} url={api_url}\n")
     try:
         heartbeat_loop(api_url)
     except KeyboardInterrupt:

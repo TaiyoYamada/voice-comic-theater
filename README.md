@@ -117,8 +117,8 @@ npm run ngrok:back       # = ngrok http 8000
 ```python
 # Colab の最後のセル（詳細は colab/start_backend.ipynb）
 import os
-os.environ['NGROK_AUTHTOKEN'] = userdata.get('NGROK_AUTHTOKEN')  # 直書きしない
-os.environ['GAS_URL']         = userdata.get('GAS_URL')
+os.environ['GAS_URL']      = userdata.get('GAS_URL')   # 直書きしない
+os.environ['TUNNEL']       = 'cloudflare'              # 本番は Cloudflare（無料・鍵不要・複数台OK）
 os.environ['SERVER_ID']    = 'colab-1'
 os.environ['SERVER_COLOR'] = 'red'
 os.environ['SERVER_LABEL'] = '赤サーバー'
@@ -126,7 +126,12 @@ os.environ['CAPACITY']     = '2'        # 1台 1〜2人
 %run colab/colab_runner.py
 ```
 
-`colab_runner.py` が **依存インストール → FastAPI起動 → ngrok公開 → GAS登録 → heartbeat送信** まで自動で行います。
+`colab_runner.py` が **依存インストール → FastAPI起動 → トンネル公開 → GAS登録 → heartbeat送信** まで自動で行います。
+
+**公開トンネルは2種類**（`TUNNEL` で切替。GASがURLを仲介するのでフロントは無修正）:
+- `cloudflare`（本番おすすめ）: 無料・アカウント/鍵不要・**複数台同時OK**・警告ページ無し。`cloudflared` を自動取得して `*.trycloudflare.com` を発行。
+- `ngrok`（手元の確認向き）: 1アカウント＝同時1トンネル。`NGROK_AUTHTOKEN` が必要。
+
 手順の全体は [docs/03-colab-backend.md](docs/03-colab-backend.md) と [docs/05-event-operations.md](docs/05-event-operations.md)。
 
 ---
@@ -136,7 +141,7 @@ os.environ['CAPACITY']     = '2'        # 1台 1〜2人
 GAS + Google Sheets を**簡易サーバーレジストリ**として使います（外部DBは使いません）。
 Sheets の列: `serverId | color | label | apiUrl | enabled | capacity | assignedCount | lastSeen`
 
-1. **register**: Colab 起動時、`colab_runner.py` が ngrok URL を GAS に登録（`apiUrl` 保存・`assignedCount=0`・`lastSeen` 更新）。
+1. **register**: Colab 起動時、`colab_runner.py` がトンネルの公開URL（Cloudflare/ngrok）を GAS に登録（`apiUrl` 保存・`assignedCount=0`・`lastSeen` 更新）。
 2. **heartbeat**: 一定間隔（既定30秒）で `lastSeen` を更新。生きているサーバーだけが「新しい」状態になる。
 3. **list**: React 起動時に `?action=list` で一覧取得。
 4. **assign**: 割り当て確定時に `assignedCount` を +1。
