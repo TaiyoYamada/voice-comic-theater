@@ -736,6 +736,53 @@ rt {
   text-align: center;
 }
 
+/* ===== あそびかた ===== */
+.howto-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.howto-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.06);
+}
+.howto-no {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+.howto-ic {
+  flex: 0 0 auto;
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+}
+.howto-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.howto-text strong {
+  font-size: 17px;
+}
+.howto-text span {
+  font-size: 14px;
+}
+
 /* ===== 接続ステータス ピル ===== */
 .status-pill {
   display: inline-flex;

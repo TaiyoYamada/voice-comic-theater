@@ -41,6 +41,14 @@ export function Sidebar({
         ))}
       </nav>
       <div className="sidebar-foot">
+        <button className="side-item small" onClick={() => navigate('/how-to')}>
+          <span className="ic">
+            <Icon name="play" size={20} />
+          </span>
+          <span className="lb">
+            <Ruby text="遊(あそ)び方(かた)" />
+          </span>
+        </button>
         <button className="side-item small" onClick={() => navigate('/privacy')}>
           <span className="ic">
             <Icon name="lock" size={20} />
