@@ -46,7 +46,7 @@ export function Privacy() {
         <h3>4. 音声データの取り扱い</h3>
         <ul>
           <li>
-            音声の文字起こしおよび AI 音声生成は、すべて運営者が用意した実行環境（Google Colab）
+            AI 音声生成は、すべて運営者が用意した実行環境（Google Colab）
             <strong>内のみ</strong>で処理します。
           </li>
           <li>

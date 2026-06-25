@@ -105,7 +105,7 @@ export function Record() {
 
       <div className="card">
         <p className="step-hint" style={{ marginTop: 0 }}>
-          <Ruby text="録音(ろくおん)できないときは、おうちの人(ひと)や先生(せんせい)に聞(き)いて音声(おんせい)ファイルを選(えら)んでね。" />
+          <Ruby text="録音(ろくおん)できないときは、上(うえ)の文(ぶん)を読(よ)んで録音(ろくおん)した音声(おんせい)ファイルを選(えら)んでね。" />
         </p>
         <input type="file" accept="audio/*" onChange={onUpload} />
       </div>
