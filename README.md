@@ -3,7 +3,7 @@
 > アプリ名: **コエコミ**（声 × コミック）。リポジトリ名は `voice-comic-theater`。
 
 小学生向けイベント用 Web アプリ。
-iPad でアプリを開き、**4コマ漫画を作り → 自分の声を録音 → AI音声を生成 → 4コマ劇場として再生**するまでを行えます。
+iPad でアプリを開き、**4コマ漫画を作り → 決まった文を読んで自分の声を録音 → AI音声を生成 → 4コマ劇場として再生**するまでを行えます。
 画面は**左サイドバーでいつでも自由に行き来**でき（順番の強制なし）、各コマには**写真1枚＋セリフを複数**置けます（追加・削除・編集・▲▼で並べ替え、コマ自体の並べ替えも可）。UI はすべて**漢字＋ふりがな**で表示します。
 
 ```mermaid
@@ -12,7 +12,7 @@ flowchart TD
     Front -->|"① 起動時に使えるColab一覧を取得 (list)"| GAS["GAS + Google Sheets<br/>(サーバーレジストリ)"]
     Front -->|"② 空きColabを自動割り当て<br/>localStorage に保存"| GAS
     Colab["Colab #1..#10<br/>(FastAPI + ngrok)"] -->|register / heartbeat| GAS
-    Front -->|"文字起こし / AI音声生成<br/>(割り当てられた apiUrl へ)"| Colab
+    Front -->|"AI音声生成<br/>(割り当てられた apiUrl へ)"| Colab
 ```
 
 ---
@@ -23,7 +23,7 @@ flowchart TD
 voice-comic-theater/
 ├── frontend/        React + TypeScript（Vite）。子ども用UI＋先生用 /admin
 │   ├── src/
-│   │   ├── steps/       各画面（編集 / 録音 / 文字 / AI声 / 劇場）。サイドバーで自由移動
+│   │   ├── steps/       各画面（編集 / 録音 / AI声 / 劇場）。サイドバーで自由移動
 │   │   ├── components/  Sidebar / Furigana(ルビ) / PanelPicker / ServerBadge ほか
 │   │   ├── lib/         registry(GAS) / api(FastAPI) / recorder / speech / storage / comic
 │   │   ├── admin/       先生・TA用 管理画面（/admin）
@@ -31,11 +31,11 @@ voice-comic-theater/
 │   │   └── ...
 │   ├── public/panels/   20枚のダミーパネル画像 + manifest.json（差し替え可）
 │   └── scripts/         パネル画像ジェネレーター
-├── backend/         FastAPI。adapter層でWhisper/QwenTTSに差し替え可
+├── backend/         FastAPI。adapter層でQwenTTSに差し替え可
 │   └── app/
-│       ├── routes/      /health /transcribe /generate-comic-voices /files /cleanup
-│       ├── services/    audio(ffmpeg) / transcription / tts（サービス層）
-│       └── adapters/    dummy / whisper / qwen（adapter層）
+│       ├── routes/      /health /generate-comic-voices /files /cleanup
+│       ├── services/    audio(ffmpeg) / tts（サービス層）
+│       └── adapters/    dummy / qwen（adapter層）
 ├── colab/           Colabでバックエンドを起動するコード（runner + notebook）
 ├── gas/             Google Apps Script（サーバーレジストリ）
 └── docs/            セットアップ・運用ドキュメント
@@ -49,9 +49,8 @@ voice-comic-theater/
 | [docs/02-ngrok-ipad.md](docs/02-ngrok-ipad.md) | ngrok を使って iPad から確認する方法 |
 | [docs/03-colab-backend.md](docs/03-colab-backend.md) | Colab でバックエンドを起動する方法 |
 | [docs/04-gas-sheets.md](docs/04-gas-sheets.md) | GAS + Google Sheets の準備方法 |
-| [docs/05-event-operations.md](docs/05-event-operations.md) | 本番当日の運用手順 |
-| [docs/06-fallback.md](docs/06-fallback.md) | Colab が落ちた時のフォールバック手順 |
-| [docs/07-child-voice-notes.md](docs/07-child-voice-notes.md) | 子どもの声を扱う上での注意事項 |
+| [docs/05-fallback.md](docs/05-fallback.md) | Colab が落ちた時のフォールバック手順 |
+| [docs/06-child-voice-notes.md](docs/06-child-voice-notes.md) | 子どもの声を扱う上での注意事項 |
 
 ---
 
@@ -75,7 +74,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 # http://localhost:8000/health
 ```
 
-最初は **ダミー実装** で動きます（文字起こし＝サンプル文、AI音声＝コマごとに違うトーン音）。
+最初は **ダミー実装** で動きます（AI音声＝コマごとに違うトーン音）。
 `React → FastAPI → 音声ファイル返却 → 4コマ劇場再生` の流れがそのまま確認できます。
 
 ### パネル画像の差し替え
@@ -136,7 +135,7 @@ os.environ['CAPACITY']     = '2'        # 1台 1〜2人
 **本番は Cloudflare Quick Tunnel を使います**（`TUNNEL='cloudflare'`）。無料・アカウント/鍵不要で**複数台を同時公開**でき、警告ページも出ません。`cloudflared` を自動取得して `*.trycloudflare.com` を発行 → GAS に登録します。
 ngrok（`TUNNEL='ngrok'`）は1アカウント＝同時1トンネルのため、**開発中に手元の1台を iPad 確認する用途のみ**に使います。GASがURLを仲介するのでフロントはどちらでも無修正です。
 
-手順の全体は [docs/03-colab-backend.md](docs/03-colab-backend.md) と [docs/05-event-operations.md](docs/05-event-operations.md)。
+手順の全体は [docs/03-colab-backend.md](docs/03-colab-backend.md)。
 
 ---
 
@@ -190,7 +189,7 @@ flowchart TD
     D --> P
 ```
 
-詳細は [docs/06-fallback.md](docs/06-fallback.md)。
+詳細は [docs/05-fallback.md](docs/05-fallback.md)。
 
 ---
 
@@ -211,7 +210,7 @@ ruff format --check . # フォーマット確認
 ```
 
 - フロント: `colors` / `rankServers`（割り当てロジック）/ `storage` / `config` / `ServerBadge` をテスト。
-- バック: `/health` `/transcribe` `/generate-comic-voices`(4ファイル生成・lock解放) `/files`(配信・パストラバーサル防御) `/cleanup`、ダミーTTSのwav生成をテスト。
+- バック: `/health` `/generate-comic-voices`(4ファイル生成・lock解放) `/files`(配信・パストラバーサル防御) `/cleanup`、ダミーTTSのwav生成をテスト。
 - **GitHub Actions**（`.github/workflows/ci.yml`）が push / PR で frontend・backend 両ジョブを自動実行します。
 - GAS の動作確認は `bash scripts/test-gas.sh <GAS_URL>`（register→list→assign→heartbeat→list）。
 
@@ -223,7 +222,6 @@ ruff format --check . # フォーマット確認
 | バックエンド | FastAPI |
 | AI実行環境 | Google Colab |
 | 音声生成（TTS） | Qwen3-TTS（既定）／ dummy にも切替可 |
-| 文字起こし | Whisper ／ dummy にも切替可 |
 | 本番の外部公開（トンネル） | **Cloudflare Quick Tunnel**（無料・複数台同時・鍵不要） |
 | 開発時の外部公開 | ngrok（手元1台の iPad 確認用） |
 | Colabサーバー管理 | GAS + Google Sheets |
@@ -231,5 +229,5 @@ ruff format --check . # フォーマット確認
 | 外部DB | 使わない |
 
 - 音声生成: 既定は **Qwen3-TTS**（`adapters/qwen_tts.py`）。動作確認用に `TTS_BACKEND=dummy`（トーン音）へ即切替可。サービス層／adapter層に分離済み。
-- 文字起こし: 既定は **Whisper**（`adapters/whisper_transcriber.py`）。`TRANSCRIBE_BACKEND=dummy` でサンプル文に切替可。
+- 声クローンの参照テキストは**固定スクリプト**（`frontend/src/lib/script.ts` の `REFERENCE_SCRIPT`）。子どもは録音画面に出る決まった文を読むだけで、テキスト入力は不要です。
 - 1つのColabでは `asyncio.Lock`（`backend/app/locks.py`）により**音声生成を1件ずつ順番に処理**します。

@@ -127,10 +127,10 @@ os.environ['NGROK_AUTHTOKEN'] = userdata.get('NGROK_AUTHTOKEN')  # 必須
 
 ---
 
-## 音声生成（Qwen3-TTS）・文字起こし（Whisper）
+## 音声生成（Qwen3-TTS）
 
-**既定で Qwen3-TTS（声クローン）+ Whisper が使われます。** Colab 側で特別な設定は不要で、
-`colab_runner.py` が `backend/requirements-ai.txt`（torch / qwen-tts / soundfile / openai-whisper）を
+**既定で Qwen3-TTS（声クローン）が使われます。** Colab 側で特別な設定は不要で、
+`colab_runner.py` が `backend/requirements-ai.txt`（torch / qwen-tts / soundfile）を
 自動でインストールします。**GPU ランタイム必須**（メニュー > ランタイム > ランタイムのタイプを変更 > GPU）。
 
 - **Qwen3-TTS**: Apache-2.0 のオープンモデル。参照音声3秒程度から声を真似て（zero-shot voice clone）
@@ -138,20 +138,20 @@ os.environ['NGROK_AUTHTOKEN'] = userdata.get('NGROK_AUTHTOKEN')  # 必須
   - モデル: `Qwen/Qwen3-TTS-12Hz-1.7B-Base`（`QWEN_TTS_MODEL` で変更可）
   - 言語: `TTS_LANGUAGE`（既定 `Japanese`）
   - `flash-attn` が無くても `sdpa` で動きます（`requirements-ai.txt` で flash-attn は任意）。
-- **Whisper**: `backend/app/adapters/whisper_transcriber.py`。`WHISPER_MODEL`（既定 `base`）で精度／速度を調整。
+  - 参照テキストは**固定スクリプト**（`frontend/src/lib/script.ts` の `REFERENCE_SCRIPT`）。
+    子どもが録音画面の決まった文を読むので、参照テキストと録音内容が常に一致します。
 
 ### dummy で軽く動かしたいとき（GPU 無し・動作確認）
 
-セル2に追記すると、AI 依存のインストールもスキップしてトーン音＋サンプル文で動きます:
+セル2に追記すると、AI 依存のインストールもスキップしてトーン音で動きます:
 
 ```python
-os.environ['TTS_BACKEND']        = 'dummy'
-os.environ['TRANSCRIBE_BACKEND'] = 'dummy'
+os.environ['TTS_BACKEND'] = 'dummy'
 ```
 
 ### フォールバックの安全装置
 
-`services/tts.py`・`services/transcription.py` は、torch / qwen-tts / whisper が読み込めない、
+`services/tts.py` は、torch / qwen-tts が読み込めない、
 または GPU が無い場合に **自動で dummy にフォールバック** します（サーバーは落ちません）。
 adapter を環境変数で選ぶ構造なので、**route やフロントは一切変更不要**です。
 

@@ -58,7 +58,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 curl http://localhost:8000/health
-# {"status":"ok", ... "transcribeBackend":"dummy","ttsBackend":"dummy", ...}
+# {"status":"ok", ... "ttsBackend":"dummy", ...}
 ```
 
 ---
@@ -81,10 +81,9 @@ localStorage.setItem('vct.assignment', JSON.stringify({
 
 ## ダミー実装について
 
-- **文字起こし**: 録音内容に関わらずサンプル文を返す（`adapters/dummy_transcriber.py`）。
 - **AI音声**: コマごとに高さ・長さの違うトーン音 wav を生成する（`adapters/dummy_tts.py`）。
 
-これにより、Whisper / QwenTTS を入れる前から
-「えをえらぶ → セリフ → 録音 → 文字起こし → AI音声 → 4コマ劇場再生」まで一通り動きます。
+これにより、QwenTTS を入れる前から
+「えをえらぶ → セリフ → 録音（固定の文を読む） → AI音声 → 4コマ劇場再生」まで一通り動きます。
 
 本実装への差し替えは [03-colab-backend.md](03-colab-backend.md) を参照。
