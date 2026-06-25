@@ -106,7 +106,11 @@ export function Theater() {
       />
 
       <div className="theater-screen">
-        {panel ? <img src={panel.src} alt={panel.label} /> : <div className="theater-noimg" />}
+        {panel ? (
+          <img src={panel.src} alt={panel.label} style={{ objectPosition: `50% ${coma.focusY}%` }} />
+        ) : (
+          <div className="theater-noimg" />
+        )}
         {subtitle && (
           <div className={'theater-subtitle' + (activeLine ? ' speaking' : '')}>{subtitle}</div>
         )}

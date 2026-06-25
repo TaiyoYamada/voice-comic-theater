@@ -9,7 +9,7 @@ function newLine(text = ''): Line {
   return { id: `l${++_seq}`, text, voiceUrl: null }
 }
 function emptyComas(): Coma[] {
-  return Array.from({ length: COMA_COUNT }, () => ({ panelId: null, lines: [newLine()] }))
+  return Array.from({ length: COMA_COUNT }, () => ({ panelId: null, focusY: 50, lines: [newLine()] }))
 }
 
 function moveItem<T>(arr: T[], index: number, dir: -1 | 1): T[] {
@@ -44,6 +44,8 @@ export interface AppState {
   // 作品データ（コマ＝写真＋セリフ複数）
   comas: Coma[]
   setComaPanel: (comaIndex: number, panelId: string) => void
+  /** 写真の縦位置（0〜100%）を変える。 */
+  setComaFocus: (comaIndex: number, focusY: number) => void
   moveComa: (comaIndex: number, dir: -1 | 1) => void
   addLine: (comaIndex: number) => void
   updateLine: (comaIndex: number, lineId: string, text: string) => void
@@ -103,7 +105,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       gapSec,
       setGapSec,
       comas,
-      setComaPanel: (comaIndex, panelId) => mapComa(comaIndex, (c) => ({ ...c, panelId })),
+      // 写真を変えたら縦位置は中央にリセットして、改めて合わせ込めるようにする。
+      setComaPanel: (comaIndex, panelId) => mapComa(comaIndex, (c) => ({ ...c, panelId, focusY: 50 })),
+      setComaFocus: (comaIndex, focusY) => mapComa(comaIndex, (c) => ({ ...c, focusY })),
       moveComa: (comaIndex, dir) => setComas((prev) => moveItem(prev, comaIndex, dir)),
       addLine: (comaIndex) =>
         mapComa(comaIndex, (c) =>

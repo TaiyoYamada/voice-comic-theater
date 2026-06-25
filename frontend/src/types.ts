@@ -62,6 +62,8 @@ export interface Line {
 /** 1コマ分のデータ（写真1枚＋セリフ複数）。 */
 export interface Coma {
   panelId: string | null
+  /** 写真の縦位置（object-position の Y%。0=上 / 50=中央 / 100=下）。横幅に合わせた写真を上下に動かす。 */
+  focusY: number
   lines: Line[]
 }
 
