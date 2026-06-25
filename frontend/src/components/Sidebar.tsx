@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Ruby } from './Furigana'
 import { Icon } from './icons'
+import { Mascot } from './Mascot'
 import type { SectionMeta } from '../ui/labels'
 
 /** 左サイドバー。どの画面へもいつでも移動できる（順番なし）。 */
@@ -18,7 +19,7 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-brand">
         <span className="brand-mark">
-          <Icon name="mic" size={22} />
+          <Mascot size={32} />
         </span>
         <span className="brand-name">コエコミ</span>
       </div>

@@ -1,11 +1,8 @@
-import { useNavigate } from 'react-router-dom'
 import { Ruby } from '../components/Furigana'
-import { Icon } from '../components/icons'
 import { Mascot } from '../components/Mascot'
 
 /** 起動時のホーム（タイトル）画面。教育系キッズアプリ風。 */
 export function Home({ onStart }: { onStart: () => void }) {
-  const navigate = useNavigate()
   return (
     <div className="home">
       {/* 背景のカラフルな丸（ブランド10色のうち数色） */}
@@ -20,18 +17,13 @@ export function Home({ onStart }: { onStart: () => void }) {
         <Mascot />
         <h1 className="home-title">コエコミ</h1>
         <p className="home-tagline">
-          <Ruby text="じぶんの声(こえ)で 4コマげきじょうを つくろう！" />
+          <Ruby text="自分(じぶん)の声(こえ)で 4コマ劇場(げきじょう)を 作(つく)ろう！" />
         </p>
 
         <button className="btn big home-start" onClick={onStart}>
-          <Ruby text="つくってみよう！" />
+          <Ruby text="作(つく)ってみよう！" />
         </button>
       </div>
-
-      <button className="home-adults" onClick={() => navigate('/privacy')}>
-        <Icon name="lock" size={16} />
-        <Ruby text="おうちの人(ひと)・先生(せんせい)へ" />
-      </button>
     </div>
   )
 }
