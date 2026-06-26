@@ -13,11 +13,13 @@ generation_lock を取得してから処理するので、
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from ..config import settings
 from ..locks import generation_lock
 from ..services.audio import convert_to_wav, save_upload
 from ..services.tts import synthesize_lines
@@ -40,11 +42,23 @@ async def generate_comic_voices(
     # 1つのColabにつき生成は1件ずつ。混雑時は順番待ちになる。
     async with generation_lock:
         log.info("音声生成を開始: %d 件", len(lines))
-        files = await synthesize_lines(
-            reference_audio=ref_wav,
-            reference_text=reference_text,
-            lines=list(lines),
-        )
+        try:
+            # タイムアウトを付ける。詰まっても wait_for が抜けることで
+            # async with がロックを解放するので、後続のリクエストを無限に待たせない。
+            files = await asyncio.wait_for(
+                synthesize_lines(
+                    reference_audio=ref_wav,
+                    reference_text=reference_text,
+                    lines=list(lines),
+                ),
+                timeout=settings.gen_timeout_sec,
+            )
+        except asyncio.TimeoutError:
+            log.error("音声生成がタイムアウトしました（%d 秒）", settings.gen_timeout_sec)
+            raise HTTPException(
+                status_code=504,
+                detail="音声生成がタイムアウトしました。もう一度お試しください。",
+            ) from None
         log.info("音声生成が完了: %s", files)
 
     return {"files": files}

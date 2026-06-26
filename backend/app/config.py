@@ -21,6 +21,8 @@ class Settings:
     qwen_model: str = field(default_factory=lambda: os.getenv("QWEN_TTS_MODEL", "Qwen/Qwen3-TTS-12Hz-1.7B-Base"))
     # 生成する言語（小学生＝日本語想定）
     tts_language: str = field(default_factory=lambda: os.getenv("TTS_LANGUAGE", "Japanese"))
+    # 1リクエストの生成がこれを超えたら諦めて 504 を返す（ロックを解放して後続を詰まらせない）。
+    gen_timeout_sec: int = field(default_factory=lambda: int(os.getenv("GEN_TIMEOUT_SEC", "180")))
 
     output_dir: Path = field(default_factory=lambda: Path(os.getenv("OUTPUT_DIR", "output")))
     tmp_dir: Path = field(default_factory=lambda: Path(os.getenv("TMP_DIR", "tmp")))
